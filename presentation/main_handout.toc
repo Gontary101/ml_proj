@@ -1,0 +1,7 @@
+\beamer@sectionintoc {1}{Introduction}{2}{0}{1}
+\beamer@sectionintoc {2}{Data Extraction and Preparation}{4}{0}{2}
+\beamer@sectionintoc {3}{Model}{7}{0}{3}
+\beamer@sectionintoc {4}{Experimental Plan for Hyperparameters}{9}{0}{4}
+\beamer@sectionintoc {5}{Challenges Encountered}{11}{0}{5}
+\beamer@sectionintoc {6}{Results and Analysis}{13}{0}{6}
+\beamer@sectionintoc {7}{Conclusion}{16}{0}{7}
