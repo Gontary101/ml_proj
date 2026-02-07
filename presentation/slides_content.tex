@@ -123,7 +123,7 @@ c_t=f_t\odot c_{t-1}+i_t\odot \tilde{c}_t
   \item Input tensor: \((\texttt{batch},150,20)\).
   \item Backbone: \texttt{LSTM(num\_layers=2, hidden\_size=64, dropout=0.2)}.
   \item Classifier head: last hidden state \(\rightarrow\) \texttt{Linear(64,3)}.
-  \item Loss/optimizer: \texttt{CrossEntropyLoss} + \texttt{Adam(lr=1e-3)}.
+  \item Loss and optimizer: \texttt{CrossEntropyLoss} + \texttt{Adam(lr=1e-3)}.
   \item Batch size: \(32\), training budget up to \(40\) epochs in main experiments.
   \item Stability control: gradient clipping \(\|\nabla\|_{max}=1.0\).
 \end{itemize}
@@ -175,7 +175,7 @@ R4 & R3 + clipping & stability impact \\
   \column{0.46\textwidth}
   \scriptsize
   \textbf{Observed issue}\\
-  Large gradient spikes destabilize parameter updates.
+  Large gradient spikes destabilize the parameter's updates.
   \vspace{0.2em}
 
   \textbf{Fix used}\\
@@ -217,7 +217,7 @@ R4 & R3 + clipping & stability impact \\
 \toprule
 \textbf{Run} & \textbf{Test accuracy} & \textbf{Main effect} \\
 \midrule
-R1 & baseline (unstable) & underfitting/instability \\
+R1 & baseline (unstable) & underfitting and instability \\
 R2 & 92.31\% (72/78) & better capacity choice \\
 R3 & 98.72\% (77/78) & dropout improves generalization \\
 R4 & 100.00\% (78/78) & clipping improves stability \\
@@ -237,11 +237,11 @@ R4 & 100.00\% (78/78) & clipping improves stability \\
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{>{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{1.8cm} >{\raggedright\arraybackslash}p{2.2cm}}
 \toprule
-\textbf{Subset} & \textbf{Indices} & \textbf{Epoch budgets} & \textbf{Best test} \\
+\textbf{Subset} & \textbf{Indices} & \textbf{Epoch budgets} \\
 \midrule
-Peg pose + orientation & 0:7 & 40, 80, 150 & 100\% (78/78) \\
-Peg linear+angular velocity & 7:13 & 40, 80, 150 & 100\% (78/78) \\
-Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
+Peg pose + orientation & 0:7 & 40, 80, 150 \\
+Peg linear+angular velocity & 7:13 & 40, 80, 150 \\
+Hole pose + orientation & 13:20 & 40, 150 \\
 \bottomrule
 \end{tabular}
 \vspace{0.5em}
@@ -256,7 +256,7 @@ Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
 \begin{columns}[t,onlytextwidth]
   \column{0.56\textwidth}
   \includegraphics[width=\linewidth]{feature_effects/peg_pose_01_cell2.png}
-  {\scriptsize Evolution of the 7 peg pose/orientation features.}
+  {\scriptsize Evolution of the 7 peg pose and orientation features.}
   \column{0.40\textwidth}
   \includegraphics[width=\linewidth]{feature_effects/peg_pose_04_cell18.png}
   {\scriptsize Example loss curve (80 epochs).}
@@ -265,7 +265,7 @@ Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
 \footnotesize
 \begin{itemize}[<+->]
   \item Test performance: 98.72\% (40 ep), 100\% (80 ep), 100\% (150 ep).
-  \item Interpretation: peg pose/orientation alone already contains most class-discriminative signal.
+  \item Interpretation: The peg's pose and orientation alone already contain most class-discriminative signal.
 \end{itemize}
 \end{frame}
 
@@ -291,7 +291,7 @@ Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
 \begin{columns}[t,onlytextwidth]
   \column{0.56\textwidth}
   \includegraphics[width=\linewidth]{feature_effects/hole_pose_03_cell63.png}
-  {\scriptsize Hole-pose features remain quasi-constant over time.}
+  {\scriptsize Hole-pose features remain constant over time.}
   \column{0.40\textwidth}
   \includegraphics[width=\linewidth]{feature_effects/hole_pose_04_cell67.png}
   {\scriptsize 150 epochs: no meaningful learning.}
@@ -301,7 +301,7 @@ Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
 \begin{itemize}[<+->]
   \item Test performance drops: 32.05\% (40 ep) \(\rightarrow\) 17.95\% (150 ep).
   \item Validation loss increases with training: more epochs worsen generalization.
-  \item Interpretation: this subset is non-discriminative for this task (near-constant signal).
+  \item Interpretation: this subset is non-discriminative for trajectory classification.
 \end{itemize}
 \end{frame}
 
@@ -312,9 +312,9 @@ Hole pose + orientation & 13:20 & 40, 150 & 17.95\% (14/78) \\
   \item The final full-feature LSTM pipeline (2 layers, hidden 64, dropout, clipping) reaches top internal performance.
   \item Methodical ablation clarifies causality:
   \begin{itemize}[<+->]
-    \item peg pose/orientation is highly informative,
-    \item peg velocity is informative but optimization-sensitive,
-    \item hole pose/orientation alone is not discriminative here.
+    \item The peg's pose and orientation are highly informative,
+    \item The peg velocity is informative but optimization-sensitive,
+    \item The hole's pose/orientation alone is not discriminative here.
   \end{itemize}
   \item Jury-level takeaway: good accuracy comes from both \textbf{signal selection} and \textbf{stable optimization}, not from architecture choice alone.
   \item Final validation step remains the teacher-held hidden test set.
