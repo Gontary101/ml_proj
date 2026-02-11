@@ -8,7 +8,7 @@
 \begin{frame}{Project Objectives}
 \small
 \begin{itemize}[<+->]
-  \item Build a trajectory-level classifier for a 7-DoF peg-in-hole task with \textbf{3 classes}.
+  \item Build a trajectory classifier for a 7-DoF peg-in-hole task with \textbf{3 classes}.
   \item Use LSTM architecture.
   \item Deliver two outcomes:
   \begin{itemize}[<+->]
@@ -96,55 +96,19 @@ Class-dependent temporal patterns are visible before training, which motivates a
 \end{frame}
 
 \section{Model}
-\begin{frame}{Why LSTM (Course Connection)}
-\small
-\begin{itemize}[<+->]
-  \item Reminder: vanilla RNNs are sensitive to vanishing/exploding gradients through BPTT.
-  \item LSTM uses gated memory to control information flow and preserve useful long-range signals.
-\end{itemize}
-\vspace{-0.2em}
-\[
-i_t,f_t,o_t=\sigma(\cdot),\quad \tilde{c}_t=\tanh(\cdot),\quad
-c_t=f_t\odot c_{t-1}+i_t\odot \tilde{c}_t
-\]
-\vspace{-0.6em}
-\small
-\begin{itemize}[<+->]
-  \item This architecture matches the project setting: long trajectories (\(150\) steps) with dynamic class signatures.
-\end{itemize}
-\end{frame}
 
-\begin{frame}{Final Architecture and Training Setup}
+\begin{frame}{Architecture and Training Setup}
 \small
 \begin{itemize}[<+->]
   \item Input tensor: \((\texttt{batch},n_{timesteps}= 150,n_{features}= 20)\).
   \item Backbone: \texttt{LSTM(num\_layers=2, hidden\_size=64, dropout=0.2)}.
   \item Classifier head: last hidden state \(\rightarrow\) \texttt{Linear(64,3)}.
   \item Loss and optimizer: \texttt{CrossEntropyLoss} + \texttt{Adam(lr=1e-3)}.
-  \item Batch size: \(32\), training budget up to \(40\) epochs in main experiments.
-  \item Stability control: gradient clipping \(\|\nabla\|_{max}=1.0\).
+  \item Batch size: \(32\), \(40\) epochs.
+  \item Stability: gradient clipping \(\|\nabla\|_{max}=1.0\).
 \end{itemize}
 \end{frame}
 
-\section{Experimental Plan for Hyperparameters}
-\begin{frame}{Controlled Experiment Plan}
-\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{1.1cm} >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}p{3.4cm}}
-\toprule
-\textbf{Run} & \textbf{Setting} & \textbf{Purpose} \\
-\midrule
-R1 & hidden=64, 2 layers, 40 ep, no norm / dropout / clipping & raw baseline \\
-R2 & + z-score + dropout(0.2) & normalization + regularization \\
-R3 & R2 + gradient clipping & training stability \\
-\bottomrule
-\end{tabular}
-\vspace{0.4em}
-\small
-\begin{itemize}[<+->]
-  \item Fixed controls: seed, split protocol, optimizer family, class definition.
-  \item Selection criterion: best generalization with stable learning curves.
-\end{itemize}
-\end{frame}
 
 \section{Challenges Encountered}
 \begin{frame}{Practical Issues During Development}
@@ -196,7 +160,7 @@ R3 & R2 + gradient clipping & training stability \\
 \end{columns}
 \end{frame}
 
-\begin{frame}{Run R3 — Best Run}
+\begin{frame}{Run 3 : Best Run}
 \centering
 \includegraphics[width=0.48\linewidth]{model_4_loss_accuracy.png}\\[0.2em]
 {\scriptsize R3 (+dropout + gradient clipping): \textbf{100\%} test accuracy (78/78).}
@@ -208,27 +172,8 @@ R3 & R2 + gradient clipping & training stability \\
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Quantitative Synthesis}
-\small
-\begin{tabular}{lcc}
-\toprule
-\textbf{Run} & \textbf{Test accuracy} & \textbf{Main effect} \\
-\midrule
-R1 & diverges & no regularization or normalization \\
-R2 & 98.72\% (77/78) & z-score + dropout improve generalization \\
-R3 & 100.00\% (78/78) & clipping stabilizes training \\
-\bottomrule
-\end{tabular}
-\vspace{0.5em}
-\small
-\begin{itemize}[<+->]
-  \item Most impactful additions in this pipeline: \textbf{normalization + dropout + clipping}.
-  \item Internal split performance is excellent; external hidden test remains the final robustness check.
-\end{itemize}
-\end{frame}
-
 \section{Feature Consequences Study}
-\begin{frame}{Feature-Ablation Protocol (Feature Notebook)}
+\begin{frame}{Feature-Ablation Protocol}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{>{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{1.8cm} >{\raggedright\arraybackslash}p{2.2cm}}
@@ -401,6 +346,43 @@ Classifier head & \texttt{Linear(64,3)} & 195 \\
   \item \textbf{Sequence length}: \(150\) steps does not force transformer-scale context handling.
   \item \textbf{Engineering tradeoff}: LSTM gave high accuracy with interpretable/stable training controls.
   \item GRU/Transformer remain valid extension baselines for future comparison.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: Quantitative Synthesis}
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Run} & \textbf{Test accuracy} & \textbf{Main effect} \\
+\midrule
+R1 & diverges & no regularization or normalization \\
+R2 & 98.72\% (77/78) & z-score + dropout improve generalization \\
+R3 & 100.00\% (78/78) & clipping stabilizes training \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\small
+\begin{itemize}[<+->]
+  \item Most impactful additions in this pipeline: \textbf{normalization + dropout + clipping}.
+  \item Internal split performance is excellent; external hidden test remains the final robustness check.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: LSTM}
+\small
+\begin{itemize}[<+->]
+  \item Reminder: vanilla RNNs are sensitive to vanishing/exploding gradients through BPTT.
+  \item LSTM uses gated memory to control information flow and preserve useful long-range signals.
+\end{itemize}
+\vspace{-0.2em}
+\[
+i_t,f_t,o_t=\sigma(\cdot),\quad \tilde{c}_t=\tanh(\cdot),\quad
+c_t=f_t\odot c_{t-1}+i_t\odot \tilde{c}_t
+\]
+\vspace{-0.6em}
+\small
+\begin{itemize}[<+->]
+  \item This architecture matches the project setting: long trajectories (\(150\) steps) with dynamic class signatures.
 \end{itemize}
 \end{frame}
 
