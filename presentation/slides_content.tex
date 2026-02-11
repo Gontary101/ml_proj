@@ -9,11 +9,11 @@
 \small
 \begin{itemize}[<+->]
   \item Build a trajectory-level classifier for a 7-DoF peg-in-hole task with \textbf{3 classes}.
-  \item Use a sequence model aligned with course material (\textbf{RNN/LSTM} module).
-  \item Deliver two outcomes required by the assignment:
+  \item Use LSTM architecture.
+  \item Deliver two outcomes:
   \begin{itemize}[<+->]
     \item strong performance on the internal test split,
-    \item explicit analysis of \textbf{feature influence} on performance.
+    \item Analysis of \textbf{feature influence} on performance.
   \end{itemize}
 \end{itemize}
 \end{frame}
@@ -24,7 +24,7 @@
   \item Input: one full trajectory tensor \(\in \mathbb{R}^{150 \times 20}\).
   \item Output: one class label \(\in \{0,1,2\}\) for the complete sequence.
   \item Why sequence learning: class information is encoded in \textbf{temporal dynamics}, not only static snapshots.
-  \item Evaluation context: internal split (train/val/test) in notebooks, plus compatibility with teacher-held hidden test format.
+  \item Evaluation context: internal split (train/val/test), plus compatibility with an external test set.
 \end{itemize}
 \end{frame}
 
@@ -79,9 +79,6 @@
 \]
 \vspace{-0.2em}
 \small
-\begin{itemize}[<+->]
-  \item This prevents leakage and improves optimization conditioning.
-\end{itemize}
 \end{frame}
 
 \begin{frame}{Trajectory Evidence Before Training}
@@ -102,7 +99,7 @@ Class-dependent temporal patterns are visible before training, which motivates a
 \begin{frame}{Why LSTM (Course Connection)}
 \small
 \begin{itemize}[<+->]
-  \item Course reminder (\texttt{3\_RNN\_Transformers\_2025.pdf}): vanilla RNNs are sensitive to vanishing/exploding gradients through BPTT.
+  \item Reminder: vanilla RNNs are sensitive to vanishing/exploding gradients through BPTT.
   \item LSTM uses gated memory to control information flow and preserve useful long-range signals.
 \end{itemize}
 \vspace{-0.2em}
@@ -120,7 +117,7 @@ c_t=f_t\odot c_{t-1}+i_t\odot \tilde{c}_t
 \begin{frame}{Final Architecture and Training Setup}
 \small
 \begin{itemize}[<+->]
-  \item Input tensor: \((\texttt{batch},150,20)\).
+  \item Input tensor: \((\texttt{batch},n_{timesteps}= 150,n_{features}= 20)\).
   \item Backbone: \texttt{LSTM(num\_layers=2, hidden\_size=64, dropout=0.2)}.
   \item Classifier head: last hidden state \(\rightarrow\) \texttt{Linear(64,3)}.
   \item Loss and optimizer: \texttt{CrossEntropyLoss} + \texttt{Adam(lr=1e-3)}.
@@ -132,14 +129,13 @@ c_t=f_t\odot c_{t-1}+i_t\odot \tilde{c}_t
 \section{Experimental Plan for Hyperparameters}
 \begin{frame}{Controlled Experiment Plan}
 \small
-\begin{tabular}{>{\raggedright\arraybackslash}p{1.1cm} >{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{3.9cm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.1cm} >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}p{3.4cm}}
 \toprule
 \textbf{Run} & \textbf{Setting} & \textbf{Purpose} \\
 \midrule
-R1 & hidden=100, z-score, 10 epochs & baseline behavior \\
-R2 & hidden=64, no normalization & sensitivity to scaling \\
-R3 & hidden=64 + dropout & regularization impact \\
-R4 & R3 + clipping & stability impact \\
+R1 & hidden=64, 2 layers, 40 ep, no norm / dropout / clipping & raw baseline \\
+R2 & + z-score + dropout(0.2) & normalization + regularization \\
+R3 & R2 + gradient clipping & training stability \\
 \bottomrule
 \end{tabular}
 \vspace{0.4em}
@@ -189,26 +185,27 @@ R4 & R3 + clipping & stability impact \\
 \end{frame}
 
 \section{Results and Analysis}
-\begin{frame}{Main Runs R1 and R2}
+\begin{frame}{Runs R1 and R2}
 \begin{columns}[t,onlytextwidth]
   \column{0.48\textwidth}
-  \includegraphics[width=\linewidth]{model_1_loss_accuracy.png}
-  {\scriptsize R1 baseline: limited/unstable behavior.}
+  \includegraphics[width=\linewidth]{first_run.png}
+  {\scriptsize R1 baseline: loss diverges at the end — no normalization, no dropout, no clipping.}
   \column{0.48\textwidth}
-  \includegraphics[width=\linewidth]{model_2_loss_accuracy.png}
-  {\scriptsize R2: strong gain, \textbf{92.31\%} test accuracy (72/78).}
+  \includegraphics[width=\linewidth]{model_3_loss_accuracy.png}
+  {\scriptsize R2 (+z-score +dropout): \textbf{98.72\%} test accuracy (77/78).}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Main Runs R3 and R4}
-\begin{columns}[t,onlytextwidth]
-  \column{0.48\textwidth}
-  \includegraphics[width=\linewidth]{model_3_loss_accuracy.png}
-  {\scriptsize R3 (+dropout): \textbf{98.72\%} test accuracy (77/78).}
-  \column{0.48\textwidth}
-  \includegraphics[width=\linewidth]{model_4_loss_accuracy.png}
-  {\scriptsize R4 (+dropout + clipping): \textbf{100\%} (78/78).}
-\end{columns}
+\begin{frame}{Run R3 — Best Run}
+\centering
+\includegraphics[width=0.48\linewidth]{model_4_loss_accuracy.png}\\[0.2em]
+{\scriptsize R3 (+dropout + gradient clipping): \textbf{100\%} test accuracy (78/78).}
+\vspace{0.3em}
+\small
+\begin{itemize}
+  \item Gradient clipping eliminates late-training spikes and ensures stable convergence.
+  \item This configuration is selected as the final model.
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Quantitative Synthesis}
@@ -217,16 +214,15 @@ R4 & R3 + clipping & stability impact \\
 \toprule
 \textbf{Run} & \textbf{Test accuracy} & \textbf{Main effect} \\
 \midrule
-R1 & baseline (unstable) & underfitting and instability \\
-R2 & 92.31\% (72/78) & better capacity choice \\
-R3 & 98.72\% (77/78) & dropout improves generalization \\
-R4 & 100.00\% (78/78) & clipping improves stability \\
+R1 & diverges & no regularization or normalization \\
+R2 & 98.72\% (77/78) & z-score + dropout improve generalization \\
+R3 & 100.00\% (78/78) & clipping stabilizes training \\
 \bottomrule
 \end{tabular}
 \vspace{0.5em}
 \small
 \begin{itemize}[<+->]
-  \item Most impactful additions in this pipeline: \textbf{dropout + clipping}.
+  \item Most impactful additions in this pipeline: \textbf{normalization + dropout + clipping}.
   \item Internal split performance is excellent; external hidden test remains the final robustness check.
 \end{itemize}
 \end{frame}
@@ -316,8 +312,95 @@ Hole pose + orientation & 13:20 & 40, 150 \\
     \item The peg velocity is informative but optimization-sensitive,
     \item The hole's pose/orientation alone is not discriminative here.
   \end{itemize}
-  \item Jury-level takeaway: good accuracy comes from both \textbf{signal selection} and \textbf{stable optimization}, not from architecture choice alone.
-  \item Final validation step remains the teacher-held hidden test set.
+  \item Good accuracy comes from both \textbf{signal selection} and \textbf{stable optimization}, not from architecture choice alone.
+\end{itemize}
+\end{frame}
+
+\appendix
+\section{Backup (Q\&A)}
+
+\begin{frame}{Backup: Why 2 LSTM Layers and Hidden Size 64?}
+\small
+\begin{itemize}[<+->]
+  \item The selected configuration is \texttt{num\_layers=2, hidden\_size=64}.
+  \item It gave the best stability/performance tradeoff in our controlled runs.
+  \item A stronger baseline (hidden size 100) showed weaker behavior in this project context.
+  \item With \(768\) trajectories and \(150\) timesteps, over-capacity increases instability/overfitting risk.
+  \item Two recurrent layers keep modeling depth while staying computationally light.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: Model Size and Complexity}
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Shape/setting} & \textbf{Parameters} \\
+\midrule
+LSTM layer 1 & input \(20\), hidden \(64\) & 22,016 \\
+LSTM layer 2 & input \(64\), hidden \(64\) & 33,280 \\
+Classifier head & \texttt{Linear(64,3)} & 195 \\
+\midrule
+\textbf{Total} &  & \textbf{55,491} \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\small
+\begin{itemize}[<+->]
+  \item The model is compact (\(\sim 55\)k params), which is appropriate for this dataset size.
+  \item Capacity is sufficient to fit complex temporal patterns without requiring very large-scale tuning.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: Why Gradient Clipping at 1.0?}
+\begin{columns}[t,onlytextwidth]
+  \column{0.50\textwidth}
+  \includegraphics[width=0.84\linewidth]{gradient_explosion.png}
+  {\tiny Observed gradient norm spikes before stabilization.}
+  \column{0.46\textwidth}
+  \tiny
+  \textbf{Rule used}\\
+  \texttt{clip\_grad\_norm\_(..., 1.0)}.
+  \vspace{0.2em}
+
+  \textbf{Reasoning}\\
+  - recurrent training showed large norm spikes\\
+  - only large gradients are rescaled
+  \vspace{0.2em}
+
+  \textbf{Observed effect}\\
+  stable late-epoch behavior and no final divergence.
+\end{columns}
+\end{frame}
+
+\begin{frame}{Backup: Feature Interpretation (Physical View)}
+\small
+\begin{itemize}[<+->]
+  \item \textbf{Peg pose/orientation (0:7)}: directly tracks insertion geometry and trajectory signature.
+  \item \textbf{Peg velocity (7:13)}: informative but noisier; requires longer optimization to fully separate classes.
+  \item \textbf{Hole pose/orientation (13:20)}: near-constant in these trajectories, so weak discriminative power alone.
+  \item Ablation behavior is therefore physically coherent with the task dynamics.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: Validity Limits and Expected Jury Questions}
+\small
+\begin{itemize}[<+->]
+  \item Internal test set size is \(78\) trajectories: strong result, but still finite-sample uncertainty.
+  \item Current evidence is mostly split-based; class-wise confusion details can be extended.
+  \item Single-seed reporting is reproducible but not a full multi-seed robustness study.
+  \item Final external hidden test remains the decisive out-of-distribution validation.
+  \item Data leakage risk was mitigated by train-only normalization statistics.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: Why Not GRU or Transformer (Yet)?}
+\small
+\begin{itemize}[<+->]
+  \item \textbf{Scope fit}: assignment asks for an LSTM trajectory classifier and feature-impact analysis.
+  \item \textbf{Data regime}: \(768\) sequences is moderate; LSTM is sample-efficient for this scale.
+  \item \textbf{Sequence length}: \(150\) steps does not force transformer-scale context handling.
+  \item \textbf{Engineering tradeoff}: LSTM gave high accuracy with interpretable/stable training controls.
+  \item GRU/Transformer remain valid extension baselines for future comparison.
 \end{itemize}
 \end{frame}
 
